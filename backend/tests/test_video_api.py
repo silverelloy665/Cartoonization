@@ -49,7 +49,7 @@ def test_cartoonize_video_endpoint_queues_job(monkeypatch) -> None:
     assert response.status_code == 202
     payload = response.json()
     assert payload["status"] == "queued"
-    assert payload["job_id"]
+    assert payload["job_id"] == "job-123"
     assert payload["detail"] == "Video job accepted for processing."
 
 

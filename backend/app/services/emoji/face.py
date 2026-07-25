@@ -91,25 +91,37 @@ def approximate_landmarks_from_bbox(face_bbox: tuple[int, int, int, int]) -> np.
     for offset, point in enumerate(mouth_points, start=48):
         landmarks[offset] = point
 
-    predictor_path = os.getenv("DLIB_LANDMARK_MODEL_PATH")
-    if predictor_path and Path(predictor_path).exists():
-        try:
-            import dlib  # type: ignore
-
-            predictor = dlib.shape_predictor(str(predictor_path))
-            detector = dlib.get_frontal_face_detector()
-            faces = detector(cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY))
-            if faces:
-                shape = predictor(cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY), faces[0])
-                landmarks = np.array([[shape.part(i).x, shape.part(i).y] for i in range(68)], dtype=np.float32)
-        except ImportError:
-            pass
-
     return landmarks
+
+
+def detect_dlib_landmarks(image_bgr: np.ndarray) -> np.ndarray | None:
+    predictor_path = os.getenv("DLIB_LANDMARK_MODEL_PATH")
+    if not predictor_path or not Path(predictor_path).exists():
+        return None
+
+    try:
+        import dlib  # type: ignore
+    except ImportError:
+        return None
+
+    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    predictor = dlib.shape_predictor(str(predictor_path))
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(gray)
+    if not faces:
+        return None
+
+    shape = predictor(gray, faces[0])
+    return np.array([[shape.part(i).x, shape.part(i).y] for i in range(68)], dtype=np.float32)
 
 
 def detect_face_and_landmarks(image_bgr: np.ndarray) -> tuple[tuple[int, int, int, int], np.ndarray] | None:
     face_bbox = detect_face_bbox(image_bgr)
     if face_bbox is None:
         return None
+
+    dlib_landmarks = detect_dlib_landmarks(image_bgr)
+    if dlib_landmarks is not None:
+        return face_bbox, dlib_landmarks
+
     return face_bbox, approximate_landmarks_from_bbox(face_bbox)
