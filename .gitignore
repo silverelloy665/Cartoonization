@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# Conda
+conda-meta/
+envs/
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local env and secrets
+.env
+.env.local
+.env.*.local
+
+# Temp media and generated outputs
+tmp/
+temp/
+uploads/
+outputs/
+artifacts/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.gif
+*.png
+*.jpg
+*.jpeg
