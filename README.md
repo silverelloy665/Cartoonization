@@ -55,6 +55,71 @@ CartoonVerse is a fullstack app for classical cartoonization of images and video
 7. Run the backend tests:
 
    ```bash
+Local FFmpeg requirement
+------------------------
+Video processing requires the `ffmpeg` system binary. The Docker images install `ffmpeg` automatically, but
+if you run the backend on your host machine you must install `ffmpeg` yourself. Choose one of the options below
+for your platform:
+
+- Linux (Debian/Ubuntu):
+
+```bash
+sudo apt update
+sudo apt install ffmpeg -y
+```
+
+- macOS (Homebrew):
+
+```bash
+brew install ffmpeg
+```
+
+- Windows (winget):
+
+```powershell
+winget install --id=Gyan.FFmpeg -e
+# or if you have Chocolatey
+choco install ffmpeg -y
+```
+
+- Manual: download a release from https://ffmpeg.org/download.html and add the `ffmpeg` executable to your `PATH`.
+
+After installing `ffmpeg`, verify it's available with:
+
+```bash
+ffmpeg -version
+```
+
+If `ffmpeg` is not present on the host, the Docker-based workflow will still work because the backend Dockerfile
+installs `ffmpeg` inside the container.
+
+Automated installer scripts
+---------------------------
+Two helper scripts are included to simplify installing `ffmpeg` for development.
+
+- Windows PowerShell script: `scripts/install_ffmpeg_windows.ps1`
+   - Usage (download+extract only):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_ffmpeg_windows.ps1
+```
+
+   - Usage (download+extract and add to user PATH):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_ffmpeg_windows.ps1 -AddToPath
+```
+
+- Unix shell script: `scripts/install_ffmpeg_unix.sh`
+   - Usage:
+
+```bash
+bash scripts/install_ffmpeg_unix.sh
+```
+
+These scripts attempt a best-effort installation. Review the scripts before running them and ensure you trust the
+network source for the download on Windows. If you prefer not to run install scripts, follow the manual instructions
+above for your OS.
    cd backend
    python -m pytest
    ```

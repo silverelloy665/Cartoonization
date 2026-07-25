@@ -1,0 +1,6 @@
+services:
+  cartoonization:
+    image: cartoonization
+    build:
+      context: .
+      dockerfile: ./Dockerfile
