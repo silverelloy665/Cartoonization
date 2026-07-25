@@ -10,6 +10,26 @@ import ffmpeg
 from app.services.cartoonize.image_pipeline import cartoonize_image
 
 
+def _transcode_to_supported_format(source_path: Path, target_path: Path) -> None:
+    try:
+        (
+            ffmpeg.input(str(source_path))
+            .output(
+                str(target_path),
+                vcodec="mpeg4",
+                qscale=5,
+                pix_fmt="yuv420p",
+                **{"an": None},
+            )
+            .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
+        )
+    except ffmpeg.Error as exc:
+        stderr = exc.stderr.decode(errors="ignore") if isinstance(exc.stderr, bytes) else str(exc)
+        raise ValueError(
+            f"Unable to transcode video file: {source_path}\n{stderr}"
+        ) from exc
+
+
 def _get_video_properties(capture: cv2.VideoCapture) -> tuple[float, int, int, int]:
     fps = capture.get(cv2.CAP_PROP_FPS)
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -30,9 +50,21 @@ def _write_cartoonized_silent_video(
     palette_size: int,
     smoothing_strength: int,
 ) -> int:
-    capture = cv2.VideoCapture(str(input_path))
+    actual_input_path = input_path
+    temp_transcoded_path: Path | None = None
+
+    def _open_capture(source: Path) -> cv2.VideoCapture:
+        return cv2.VideoCapture(str(source))
+
+    capture = _open_capture(actual_input_path)
     if not capture.isOpened():
-        raise ValueError(f"Unable to open video file: {input_path}")
+        capture.release()
+        temp_transcoded_path = input_path.parent / f"{input_path.stem}-transcoded.mp4"
+        _transcode_to_supported_format(input_path, temp_transcoded_path)
+        actual_input_path = temp_transcoded_path
+        capture = _open_capture(actual_input_path)
+        if not capture.isOpened():
+            raise ValueError(f"Unable to open video file after transcoding: {actual_input_path}")
 
     fps, width, height, _ = _get_video_properties(capture)
     writer = cv2.VideoWriter(
@@ -59,12 +91,48 @@ def _write_cartoonized_silent_video(
             )
             writer.write(cartoon_frame)
             frame_count += 1
+
+        if frame_count == 0 and temp_transcoded_path is None:
+            capture.release()
+            writer.release()
+            temp_transcoded_path = input_path.parent / f"{input_path.stem}-transcoded.mp4"
+            _transcode_to_supported_format(input_path, temp_transcoded_path)
+            actual_input_path = temp_transcoded_path
+            capture = _open_capture(actual_input_path)
+            if not capture.isOpened():
+                raise ValueError(f"Unable to open video file after transcoding: {actual_input_path}")
+
+            fps, width, height, _ = _get_video_properties(capture)
+            writer = cv2.VideoWriter(
+                str(silent_output_path),
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                fps,
+                (width, height),
+            )
+            if not writer.isOpened():
+                capture.release()
+                raise ValueError(f"Unable to create video writer for: {silent_output_path}")
+
+            while True:
+                success, frame = capture.read()
+                if not success:
+                    break
+                cartoon_frame = cartoonize_image(
+                    frame,
+                    edge_threshold=edge_threshold,
+                    palette_size=palette_size,
+                    smoothing_strength=smoothing_strength,
+                )
+                writer.write(cartoon_frame)
+                frame_count += 1
     finally:
         capture.release()
         writer.release()
+        if temp_transcoded_path is not None and temp_transcoded_path.exists():
+            temp_transcoded_path.unlink(missing_ok=True)
 
     if frame_count == 0:
-        raise ValueError(f"Video contains no readable frames: {input_path}")
+        raise ValueError(f"Video contains no readable frames: {actual_input_path}")
 
     return frame_count
 
