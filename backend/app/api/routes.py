@@ -7,7 +7,7 @@ from celery import states
 from celery.result import AsyncResult
 from kombu.exceptions import OperationalError
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 
 from app.celery_app import celery_app
 from app.core.config import get_settings
@@ -171,6 +171,31 @@ def cartoonize_video_status(job_id: str) -> VideoJobStatusResponse:
         status=status,
         output_path=output_path,
         error=error,
+    )
+
+
+@router.get("/cartoonize/video/result/{job_id}", tags=["cartoonize"])
+def cartoonize_video_result(job_id: str) -> FileResponse:
+    result = AsyncResult(job_id, app=celery_app)
+    if result.state in {states.PENDING, states.STARTED, states.RETRY}:
+        raise HTTPException(status_code=202, detail="Video job is still processing.")
+    if result.failed():
+        raise HTTPException(status_code=500, detail="Video processing failed.")
+    if not result.successful() or not isinstance(result.result, dict):
+        raise HTTPException(status_code=404, detail="Video result not found.")
+
+    output_path = result.result.get("output_path")
+    if not output_path:
+        raise HTTPException(status_code=404, detail="Video result not found.")
+
+    output_file = Path(output_path)
+    if not output_file.exists():
+        raise HTTPException(status_code=404, detail="Video output file is missing.")
+
+    return FileResponse(
+        path=str(output_file),
+        media_type="video/mp4",
+        filename=output_file.name,
     )
 
 
