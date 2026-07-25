@@ -113,8 +113,8 @@ async def cartoonize_uploaded_video(
     if len(raw_bytes) > max_upload_bytes:
         raise HTTPException(status_code=413, detail="File too large.")
 
-    job_id = str(uuid4())
-    job_dir = Path(settings.temp_dir) / "video-jobs" / job_id
+    temp_job_id = str(uuid4())
+    job_dir = Path(settings.temp_dir) / "video-jobs" / temp_job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
     input_suffix = Path(file.filename).suffix or ".mp4"
@@ -123,7 +123,7 @@ async def cartoonize_uploaded_video(
     input_path.write_bytes(raw_bytes)
 
     try:
-        process_video_task.delay(
+        task_result = process_video_task.delay(
             str(input_path),
             str(output_path),
             edge_threshold=edge_threshold,
@@ -136,7 +136,7 @@ async def cartoonize_uploaded_video(
         raise HTTPException(status_code=503, detail="Video queue is unavailable.") from exc
 
     return VideoJobSubmitResponse(
-        job_id=job_id,
+        job_id=task_result.id,
         status="queued",
         detail="Video job accepted for processing.",
     )
@@ -206,8 +206,7 @@ async def suggest_emoji(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required.")
     if file.content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
-        raise HTTPException(status_code=415, detail="Unsupported image format."
-        )
+        raise HTTPException(status_code=415, detail="Unsupported image format.")
 
     raw_bytes = await file.read()
     max_upload_bytes = settings.max_upload_size_mb * 1024 * 1024
