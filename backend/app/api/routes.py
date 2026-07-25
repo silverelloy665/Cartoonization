@@ -12,8 +12,10 @@ from fastapi.responses import Response
 from app.celery_app import celery_app
 from app.core.config import get_settings
 from app.schemas.cartoonize import ImageCartoonizeOptions
+from app.schemas.emoji import EmojiSuggestionResponse
 from app.schemas.video import VideoJobSubmitResponse, VideoJobStatusResponse
 from app.services.cartoonize.image_pipeline import cartoonize_image
+from app.services.emoji.matcher import suggest_emoji_from_image
 from app.tasks.video_tasks import process_video_task
 
 router = APIRouter()
@@ -170,3 +172,32 @@ def cartoonize_video_status(job_id: str) -> VideoJobStatusResponse:
         output_path=output_path,
         error=error,
     )
+
+
+@router.post("/suggest-emoji", tags=["emoji"])
+async def suggest_emoji(
+    file: UploadFile = File(...),
+) -> EmojiSuggestionResponse:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File name is required.")
+    if file.content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
+        raise HTTPException(status_code=415, detail="Unsupported image format."
+        )
+
+    raw_bytes = await file.read()
+    max_upload_bytes = settings.max_upload_size_mb * 1024 * 1024
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    if len(raw_bytes) > max_upload_bytes:
+        raise HTTPException(status_code=413, detail="File too large.")
+
+    image_array = np.frombuffer(raw_bytes, dtype=np.uint8)
+    image_bgr = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    if image_bgr is None:
+        raise HTTPException(status_code=400, detail="Unable to decode image file.")
+
+    suggestion = suggest_emoji_from_image(image_bgr)
+    if suggestion is None:
+        raise HTTPException(status_code=422, detail="No face detected in the uploaded image.")
+
+    return suggestion
