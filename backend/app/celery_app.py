@@ -22,3 +22,6 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app.tasks"])
 
+# Ensure task modules are imported so the worker registers them correctly.
+import app.tasks  # noqa: F401
+

@@ -1,3 +1,22 @@
+CartoonVerse — Fullstack
+
+This repository contains a FastAPI backend (with Celery worker) and a Vite React frontend.
+
+Quick production run (builds frontend into backend image):
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+The backend will serve the built frontend at `/` and the API under `/api`.
+
+Development:
+
+```bash
+docker compose up --build
+```
+
+Use `.env.example` as a starting point for environment variables.
 # CartoonVerse
 
 CartoonVerse is a fullstack app for classical cartoonization of images and video, plus rule-based emoji suggestions for facial expressions. The backend is modular so the image pipeline, video queue, and emoji matcher can be worked on independently.

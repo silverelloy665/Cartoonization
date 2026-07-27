@@ -42,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [options, setOptions] = useState<ImageCartoonizeOptions>(defaultOptions);
+  const [dragActive, setDragActive] = useState(false);
   const pollingRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -73,6 +74,8 @@ export default function App() {
     }
     return videoJob.error || 'Processing failed.';
   }, [videoJob]);
+
+  const isActive = Boolean(file) && !loading;
 
   async function handleFileSelection(nextFile: File | null) {
     setError('');
@@ -178,188 +181,181 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen text-slate-100">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/80 shadow-2xl shadow-cyan-950/25 backdrop-blur">
-          <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="relative border-b border-white/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.10),transparent_24%)]" />
-              <div className="relative space-y-6">
-                <div className="inline-flex rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200">
-                  CartoonVerse
+    <main className="app-shell">
+      <div className="page-shell">
+        <header className="hero-copy">
+          <p className="eyebrow">CartoonVerse</p>
+          <h1>See your photo in bold ink lines and flat color fills.</h1>
+          <p className="hero-subtitle">
+            Drop an image or video, tune the cartoon pipeline, and watch your result appear in the same comic-style
+            frame the app would produce.
+          </p>
+        </header>
+
+        <section className="hero-panels">
+          <article className="panel panel--hero">
+            <div className="panel-header">
+              <span>Before</span>
+            </div>
+            <div className="panel-content">
+              <MediaPreview url={previewUrl} mode={mode} label="Original media preview" />
+            </div>
+          </article>
+          <article className="panel panel--hero panel--accent">
+            <div className="panel-header">
+              <span>After</span>
+            </div>
+            <div className="panel-content">
+              <MediaPreview url={resultUrl} mode={mode} label="Cartoonized result preview" />
+            </div>
+          </article>
+        </section>
+
+        <section className="panel-grid">
+          <article className={`panel upload-panel ${dragActive ? 'upload-active' : ''}`}>
+            <div className="panel-header">
+              <span>Drop zone</span>
+            </div>
+            <div
+              className="upload-body"
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+                const droppedFile = event.dataTransfer.files.item(0);
+                void handleFileSelection(droppedFile);
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*,video/*"
+                className="upload-input"
+                onChange={(event) => {
+                  const selected = event.target.files?.item(0) || null;
+                  void handleFileSelection(selected);
+                }}
+              />
+              <div className="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M24 10v20" strokeLinecap="round" />
+                  <path d="M16 18l8-8 8 8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 32v4a4 4 0 0 0 4 4h16a4 4 0 0 0 4-4v-4" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="upload-copy">
+                <p className="upload-title">Drop your photo here to see it cartoonized</p>
+                <p className="upload-subtitle">Supported: {supportedExtensions}</p>
+              </div>
+              {file ? (
+                <div className="upload-selected" aria-live="polite">
+                  <strong>{file.name}</strong>
+                  <span>{mode} file ready</span>
                 </div>
-                <div className="space-y-4">
-                  <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                    Classical cartoonization for images, video, and emoji suggestions.
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                    Upload a file, tune the smoothing and palette controls, and let the backend return a cartoonized
-                    result. Image uploads also receive a rule-based WhatsApp-style emoji suggestion.
+              ) : null}
+            </div>
+          </article>
+
+          <article className="panel panel--controls">
+            <div className="panel-header">
+              <span>Controls</span>
+            </div>
+            <div className="mode-toggle" role="group" aria-label="Choose cartoon mode">
+              <button
+                type="button"
+                onClick={() => setMode('image')}
+                className={mode === 'image' ? 'button button--solid' : 'button button--ghost'}
+              >
+                Image
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('video')}
+                className={mode === 'video' ? 'button button--solid' : 'button button--ghost'}
+              >
+                Video
+              </button>
+            </div>
+
+            <div className="sliders-grid">
+              <Slider label="Edge threshold" value={options.edgeThreshold} min={0} max={30} onChange={(value) => setOptions((current) => ({ ...current, edgeThreshold: value }))} />
+              <Slider label="Palette size" value={options.paletteSize} min={2} max={16} onChange={(value) => setOptions((current) => ({ ...current, paletteSize: value }))} />
+              <Slider label="Smoothing" value={options.smoothingStrength} min={1} max={10} onChange={(value) => setOptions((current) => ({ ...current, smoothingStrength: value }))} />
+            </div>
+
+            <button type="button" disabled={!file || loading} onClick={() => void handleProcess()} className="button button--action">
+              {loading ? 'Processing…' : mode === 'image' ? 'Cartoonize this' : 'Queue video job'}
+            </button>
+
+            {error ? <div className="banner banner--error">{error}</div> : null}
+          </article>
+        </section>
+
+        <section className="result-grid">
+          <article className="panel panel--pipeline">
+            <div className="panel-header">
+              <span>Processing</span>
+            </div>
+            <div className="panel-body">
+              <ProcessingPipeline active={loading || Boolean(videoJob?.status === 'processing' || videoJob?.status === 'queued')} />
+              <div className="status-copy">
+                {videoJob ? <span>Job #{videoJob.job_id}</span> : <span>Submit a file to start the cartoon pipeline.</span>}
+                <p>{jobProgressLabel}</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="panel panel--emoji">
+            <div className="speech-bubble">
+              <div className="speech-header">Emoji suggestion</div>
+              {emojiSuggestion ? (
+                <div className="speech-body">
+                  <div className="emoji-display" aria-label={`Suggested emoji ${emojiSuggestion.emoji_name}`}>
+                    {emojiSuggestion.emoji}
+                  </div>
+                  <p>
+                    You looked {emojiSuggestion.expression.toLowerCase()} — here&apos;s your match.
                   </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setMode('image')}
-                    className={`rounded-full px-4 py-2 transition ${
-                      mode === 'image'
-                        ? 'bg-cyan-400 text-slate-950'
-                        : 'border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10'
-                    }`}
-                  >
-                    Image mode
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('video')}
-                    className={`rounded-full px-4 py-2 transition ${
-                      mode === 'video'
-                        ? 'bg-cyan-400 text-slate-950'
-                        : 'border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10'
-                    }`}
-                  >
-                    Video mode
-                  </button>
-                </div>
-
-                <label
-                  className="group flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/5 px-6 py-10 text-center transition hover:border-cyan-300/50 hover:bg-white/10"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const droppedFile = event.dataTransfer.files.item(0);
-                    void handleFileSelection(droppedFile);
-                  }}
-                >
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const selected = event.target.files?.item(0) || null;
-                      void handleFileSelection(selected);
-                    }}
-                  />
-                  <div className="space-y-2">
-                    <p className="text-lg font-medium text-white">Drop a file here or browse</p>
-                    <p className="text-sm text-slate-400">Supported: {supportedExtensions}</p>
-                  </div>
-                  {file ? (
-                    <div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-left text-sm text-slate-300">
-                      <div className="font-medium text-white">Selected file</div>
-                      <div className="mt-1 break-all">{file.name}</div>
-                      <div className="text-xs uppercase tracking-[0.25em] text-cyan-300">{mode}</div>
+                  <dl>
+                    <div>
+                      <dt>Expression</dt>
+                      <dd>{emojiSuggestion.expression}</dd>
                     </div>
-                  ) : null}
-                </label>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Slider
-                    label="Edge threshold"
-                    value={options.edgeThreshold}
-                    min={0}
-                    max={30}
-                    onChange={(value) => setOptions((current) => ({ ...current, edgeThreshold: value }))}
-                  />
-                  <Slider
-                    label="Palette size"
-                    value={options.paletteSize}
-                    min={2}
-                    max={16}
-                    onChange={(value) => setOptions((current) => ({ ...current, paletteSize: value }))}
-                  />
-                  <Slider
-                    label="Smoothing"
-                    value={options.smoothingStrength}
-                    min={1}
-                    max={10}
-                    onChange={(value) => setOptions((current) => ({ ...current, smoothingStrength: value }))}
-                  />
+                    <div>
+                      <dt>Skin tone</dt>
+                      <dd>{emojiSuggestion.skin_tone}</dd>
+                    </div>
+                  </dl>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => void handleProcess()}
-                  disabled={loading || !file}
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-300 to-amber-300 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : mode === 'image' ? 'Cartoonize image' : 'Queue video job'}
-                </button>
-
-                {error ? (
-                  <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
-                    {error}
-                  </div>
-                ) : null}
-              </div>
+              ) : (
+                <div className="speech-body">
+                  <p>No emoji yet. Upload an image so CartoonVerse can suggest a match.</p>
+                </div>
+              )}
             </div>
+          </article>
+        </section>
 
-            <div className="space-y-6 p-6 sm:p-8">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl shadow-cyan-950/10">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-cyan-300">Preview</p>
-                    <h2 className="mt-1 text-xl font-semibold text-white">Before / after</h2>
-                  </div>
-                  <div className="rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-xs text-slate-300">
-                    {file ? formatStatus(videoJob?.status) : 'idle'}
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <MediaCard title="Original" mediaUrl={previewUrl} mode={mode} emptyLabel="Select a file to preview it here." />
-                  <MediaCard title="Cartoonized" mediaUrl={resultUrl} mode={mode} emptyLabel="Processed output will appear here." />
-                </div>
-
-                {mode === 'video' && videoJob ? (
-                  <div className="mt-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
-                    <div className="font-medium">Video job {videoJob.job_id}</div>
-                    <div className="mt-1 text-cyan-100/90">{jobProgressLabel}</div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-fuchsia-300">Emoji suggestion</p>
-                  <h2 className="mt-1 text-xl font-semibold text-white">Expression + skin tone</h2>
-                  {emojiSuggestion ? (
-                    <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-slate-900/80 p-4">
-                      <div className="text-4xl">🙂</div>
-                      <div className="text-sm text-slate-300">{emojiSuggestion.emoji_name}</div>
-                      <div className="text-sm text-slate-400">Expression: {emojiSuggestion.expression}</div>
-                      <div className="text-sm text-slate-400">Skin tone: {emojiSuggestion.skin_tone}</div>
-                      <div className="text-xs break-all text-slate-500">{emojiSuggestion.asset_path}</div>
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm leading-6 text-slate-400">
-                      Image uploads will show the suggested emoji here. If no face is detected, the API returns a clear
-                      response instead of failing silently.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-amber-300">Job status</p>
-                  <h2 className="mt-1 text-xl font-semibold text-white">Video polling</h2>
-                  <div className="mt-4 space-y-3 text-sm text-slate-300">
-                    <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3">
-                      <div className="font-medium text-white">Current status</div>
-                      <div className="mt-1 capitalize text-slate-300">{videoJob?.status || 'idle'}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3">
-                      <div className="font-medium text-white">Next step</div>
-                      <div className="mt-1 text-slate-300">
-                        {videoJob?.status === 'done'
-                          ? 'Download the processed video from the result pane.'
-                          : 'Submit a video to queue a background job, then wait for the worker to finish.'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <section className="panel panel--comparison">
+          <div className="panel-header">
+            <span>Result view</span>
+          </div>
+          <div className="panel-content">
+            <ResultComparison beforeUrl={previewUrl} afterUrl={resultUrl} mode={mode} />
+            {resultUrl ? (
+              <a className="button button--secondary" href={resultUrl} download={file?.name ? `cartoon-${file.name}` : 'cartoon-result'}>
+                Download result
+              </a>
+            ) : null}
           </div>
         </section>
       </div>
@@ -377,10 +373,10 @@ type SliderProps = {
 
 function Slider({ label, value, min, max, onChange }: SliderProps) {
   return (
-    <label className="rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-sm text-slate-300">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-slate-400">
+    <label className="control-card">
+      <div className="control-header">
         <span>{label}</span>
-        <span>{value}</span>
+        <strong>{value}</strong>
       </div>
       <input
         type="range"
@@ -388,35 +384,89 @@ function Slider({ label, value, min, max, onChange }: SliderProps) {
         max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-cyan-300"
+        className="range-input"
       />
     </label>
   );
 }
 
-type MediaCardProps = {
-  title: string;
-  mediaUrl: string;
+type MediaPreviewProps = {
+  url: string;
   mode: Mode;
-  emptyLabel: string;
+  label: string;
 };
 
-function MediaCard({ title, mediaUrl, mode, emptyLabel }: MediaCardProps) {
+function MediaPreview({ url, mode, label }: MediaPreviewProps) {
+  if (!url) {
+    return <div className="empty-state">No media selected yet.</div>;
+  }
+
+  return mode === 'video' ? (
+    <video className="media-display" src={url} controls aria-label={label} />
+  ) : (
+    <img className="media-display" src={url} alt={label} />
+  );
+}
+
+type ResultComparisonProps = {
+  beforeUrl: string;
+  afterUrl: string;
+  mode: Mode;
+};
+
+function ResultComparison({ beforeUrl, afterUrl, mode }: ResultComparisonProps) {
+  const [sliderValue, setSliderValue] = useState(50);
+
+  if (!beforeUrl || !afterUrl) {
+    return <div className="comparison-empty">Drop a file and process it to enable the draggable comparison slider.</div>;
+  }
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
-      <div className="border-b border-white/10 px-4 py-3 text-xs uppercase tracking-[0.25em] text-slate-400">
-        {title}
-      </div>
-      <div className="flex min-h-72 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_50%)] p-4">
-        {mediaUrl ? (
-          mode === 'video' ? (
-            <video src={mediaUrl} controls className="max-h-72 w-full rounded-xl object-contain" />
+    <div className="comparison-shell">
+      <div className="comparison-frame">
+        <div className="comparison-layer comparison-before">
+          {mode === 'video' ? (
+            <video className="comparison-media" src={beforeUrl} muted playsInline />
           ) : (
-            <img src={mediaUrl} alt={title} className="max-h-72 w-full rounded-xl object-contain" />
-          )
-        ) : (
-          <div className="max-w-xs text-center text-sm leading-6 text-slate-400">{emptyLabel}</div>
-        )}
+            <img className="comparison-media" src={beforeUrl} alt="Original before cartoonization" />
+          )}
+        </div>
+        <div className="comparison-layer comparison-after" style={{ width: `${sliderValue}%` }}>
+          {mode === 'video' ? (
+            <video className="comparison-media" src={afterUrl} muted playsInline />
+          ) : (
+            <img className="comparison-media" src={afterUrl} alt="Cartoonized after image" />
+          )}
+        </div>
+        <div className="comparison-divider" style={{ left: `${sliderValue}%` }} aria-hidden="true" />
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={sliderValue}
+        onChange={(event) => setSliderValue(Number(event.target.value))}
+        className="comparison-slider"
+        aria-label="Compare before and after"
+      />
+    </div>
+  );
+}
+
+function ProcessingPipeline({ active }: { active: boolean }) {
+  return (
+    <div className="pipeline-shell" role="status" aria-live="polite">
+      <div className={`pipeline-step ${active ? 'pipeline-step--active' : ''}`}> 
+        <div className="pipeline-icon">✏️</div>
+        <p>Edge sketch</p>
+      </div>
+      <div className={`pipeline-step ${active ? 'pipeline-step--active delay-1' : ''}`}>
+        <div className="pipeline-icon">🎨</div>
+        <p>Flat color</p>
+      </div>
+      <div className={`pipeline-step ${active ? 'pipeline-step--active delay-2' : ''}`}>
+        <div className="pipeline-icon">✅</div>
+        <p>Final render</p>
       </div>
     </div>
   );

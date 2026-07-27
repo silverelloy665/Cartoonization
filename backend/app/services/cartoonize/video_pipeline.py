@@ -16,9 +16,9 @@ def _transcode_to_supported_format(source_path: Path, target_path: Path) -> None
             ffmpeg.input(str(source_path))
             .output(
                 str(target_path),
-                vcodec="mpeg4",
-                qscale=5,
+                vcodec="libx264",
                 pix_fmt="yuv420p",
+                movflags="+faststart",
                 **{"an": None},
             )
             .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
@@ -149,15 +149,28 @@ def _mux_original_audio(
             video_input.video,
             original_input.audio,
             str(output_path),
-            vcodec="copy",
+            vcodec="libx264",
+            pix_fmt="yuv420p",
+            movflags="+faststart",
             acodec="aac",
+            audio_bitrate="128k",
             shortest=None,
         )
         ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
         return True
     except (FileNotFoundError, ffmpeg.Error):
-        shutil.copyfile(silent_video_path, output_path)
-        return False
+        fallback = ffmpeg.output(
+            ffmpeg.input(str(silent_video_path)).video,
+            str(output_path),
+            vcodec="libx264",
+            pix_fmt="yuv420p",
+            movflags="+faststart",
+        )
+        try:
+            ffmpeg.run(fallback, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+            return False
+        except ffmpeg.Error:
+            raise
 
 
 def cartoonize_video_file(

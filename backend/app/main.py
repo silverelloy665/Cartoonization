@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.core.config import get_settings
@@ -17,4 +20,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+# Mount API under /api so a single server can also serve the SPA static files.
+app.include_router(router, prefix="/api")
+
+# Serve built frontend (if present) from / (SPA). Vite outputs to `dist` by default
+# and the build will be copied into the backend image at `/app/static`.
+static_dir = Path(__file__).resolve().parent.parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
