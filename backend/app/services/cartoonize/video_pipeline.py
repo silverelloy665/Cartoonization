@@ -154,6 +154,7 @@ def _mux_original_audio(
             movflags="+faststart",
             acodec="aac",
             audio_bitrate="128k",
+            vf="scale=trunc(iw/2)*2:trunc(ih/2)*2",
             shortest=None,
         )
         ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
@@ -165,12 +166,10 @@ def _mux_original_audio(
             vcodec="libx264",
             pix_fmt="yuv420p",
             movflags="+faststart",
+            vf="scale=trunc(iw/2)*2:trunc(ih/2)*2",
         )
-        try:
-            ffmpeg.run(fallback, overwrite_output=True, capture_stdout=True, capture_stderr=True)
-            return False
-        except ffmpeg.Error:
-            raise
+        ffmpeg.run(fallback, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+        return False
 
 
 def cartoonize_video_file(
