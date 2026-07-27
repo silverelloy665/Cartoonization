@@ -320,7 +320,17 @@ export default function App() {
               {emojiSuggestion ? (
                 <div className="speech-body">
                   <div className="emoji-display" aria-label={`Suggested emoji ${emojiSuggestion.emoji_name}`}>
-                    {emojiSuggestion.emoji}
+                    <img
+                      src={`https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${emojiSuggestion.emoji_codepoint}.png`}
+                      alt={emojiSuggestion.emoji_name}
+                      width={48}
+                      height={48}
+                      onError={(event) => {
+                        const target = event.currentTarget as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='36'%3E${String.fromCodePoint(parseInt(emojiSuggestion.emoji_codepoint, 16))}%3C/text%3E%3C/svg%3E`;
+                      }}
+                    />
                   </div>
                   <p>
                     You looked {emojiSuggestion.expression.toLowerCase()} — here&apos;s your match.

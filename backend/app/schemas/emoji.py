@@ -6,3 +6,4 @@ class EmojiSuggestionResponse(BaseModel):
     skin_tone: str
     emoji_name: str
     asset_path: str
+    emoji_codepoint: str

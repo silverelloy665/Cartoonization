@@ -17,6 +17,7 @@ export type EmojiSuggestion = {
   skin_tone: string;
   emoji_name: string;
   asset_path: string;
+  emoji_codepoint: string;
 };
 
 export type VideoJobSubmitResponse = {
