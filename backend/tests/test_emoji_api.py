@@ -25,7 +25,6 @@ def test_suggest_emoji_returns_match(monkeypatch) -> None:
             "skin_tone": "fitzpatrick_3",
             "emoji_name": "smiling-face",
             "asset_path": "assets/emoji/smiling/fitzpatrick_3.svg",
-            "emoji_codepoint": "1f642",
         },
     )
 
